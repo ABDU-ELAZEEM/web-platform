@@ -147,8 +147,8 @@ services:
         - "9090:9090"
 
       volumes:
-        - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-
+        #- ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+        - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       networks:
         - backend-network
 
