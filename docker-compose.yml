@@ -1,4 +1,5 @@
 services:
+#==================Database==============
   mysql:
     image: mysql:8.0
     container_name: mysql-container
@@ -14,12 +15,12 @@ services:
       - "3306:3306"
 
     networks:
-      - backend-network
+       -  backend-network
 
     restart: unless-stopped
    
-    cpus: "0.5"
-    mem_limit: 500m
+    cpus: "0.75"
+    mem_limit: 700m
 
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
@@ -34,7 +35,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-
+#========================Backend===============
   backend:
     build:
       context: ./app/backend
@@ -52,10 +53,9 @@ services:
     depends_on:
        mysql:
           condition: service_healthy
-    restart: on-failure
-    
-    cpus: "0.25"
-    mem_limit: 100m
+    restart: unless-stopped
+    cpus: "0.5"
+    mem_limit: 150m
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
@@ -71,10 +71,10 @@ services:
         max-file: "3"
 
 
-  #Frontend
+#============Frontend===================================
   frontend:
     build:
-      context: ./frontend
+      context: ./app/frontend
 
     container_name: frontend-container
 
@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
     
     cpus: "0.1"
-    mem_limit: 60m
+    mem_limit: 50m
 
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost"]
@@ -101,12 +101,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  #ProxyService
+#================ProxyService==================================
   reverse-proxy:
     build:
-      context: ./nginx
+      context: ./infrastructure/proxy
 
-    container_name: reverse-proxy
+    container_name: proxy-srver
 
     ports:
       - "80:80"
@@ -116,13 +116,15 @@ services:
       - backend-network
 
     depends_on:
-      - frontend
-      - backend
+        frontend:
+          condition: service_healthy
+        backend:
+          condition: service_healthy
 
     restart: unless-stopped
 
     cpus: "0.1"
-    mem_limit: 60m
+    mem_limit: 50m
 
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1"]
@@ -137,7 +139,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  #Monitoring
+#=============Monitoring===========================
   prometheus:
       image: prom/prometheus:latest
 
@@ -147,19 +149,28 @@ services:
         - "9090:9090"
 
       volumes:
-        #- ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
         - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+        - prometheus-data:/prometheus
       networks:
         - backend-network
-
       restart: unless-stopped
+
+      cpus: "0.5"
+      mem_limit: 200m
+
+      healthcheck:
+        test: ["CMD", "wget", "--spider", "http://localhost:9090/-/healthy"]
+        interval: 30s
+        timeout: 5s
+        retries: 3
+        start_period: 15s
 
       logging:
         driver: "json-file"
         options:
           max-size: "10m"
           max-file: "3"
-
+#--------------------------
   node-exporter:
     image: prom/node-exporter:latest
 
@@ -170,8 +181,10 @@ services:
 
     networks:
       - backend-network
-
     restart: unless-stopped
+
+    cpus: "0.1"
+    mem_limit: 50m
 
     command:
       - '--path.rootfs=/host'
@@ -184,7 +197,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
+#------------------------------
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
 
@@ -198,6 +211,9 @@ services:
 
     restart: unless-stopped
 
+    cpus: "0.25"
+    mem_limit: 250m
+
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -209,7 +225,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-          
+#------------------------------------          
   grafana:
     image: grafana/grafana:latest
 
@@ -229,8 +245,8 @@ services:
 
     restart: unless-stopped
 
-    cpus: "0.20"
-    mem_limit: 150m
+    cpus: "0.5"
+    mem_limit: 300m
 
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3000/api/health || exit 1"]
@@ -245,11 +261,11 @@ services:
         max-size: "10m"
         max-file: "3"
 
-
+#volume decalration 
 volumes:
   mysql-data:
-    external: true
   grafana-data:
+  prometheus-data:
 
 networks:
   backend-network:

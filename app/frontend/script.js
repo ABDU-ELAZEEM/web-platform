@@ -1,5 +1,4 @@
-```javascript
-const API_URL = "http://localhost:3000/api/users";
+const API_URL = "/api/users";
 
 const usersTable = document.getElementById("usersTable");
 const userForm = document.getElementById("userForm");
@@ -14,18 +13,24 @@ async function loadUsers() {
         }
 
         const users = await response.json();
+	usersTable.innerHTML = users.map(user => `
+    		<tr>
+        		<td>${user.id}</td>
+        		<td>${user.name}</td>
+       			 <td>${user.email}</td>
+    		</tr>
+	`).join("");
 
-        usersTable.innerHTML = "";
 
-        users.forEach((user) => {
-            usersTable.innerHTML += `
-                <tr>
-                    <td>${user.id}</td>
-                    <td>${user.name}</td>
-                    <td>${user.email}</td>
-                </tr>
-            `;
-        });
+
+
+
+
+
+
+
+
+
 
     } catch (err) {
         console.error(err);
@@ -87,5 +92,4 @@ document
     .addEventListener("click", loadUsers);
 
 loadUsers();
-```
 
